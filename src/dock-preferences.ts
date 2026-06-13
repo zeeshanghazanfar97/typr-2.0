@@ -15,6 +15,8 @@ export interface DockPreferences {
   dockColor: DockColor;
   dockPosition: DockPosition;
   dockInset: number;
+  dockWidthOffset: number;
+  dockHeightOffset: number;
 }
 
 export const DOCK_SIZE_OPTIONS: Array<{ value: DockSize; label: string }> = [
@@ -72,7 +74,16 @@ export const DEFAULT_DOCK_PREFERENCES: DockPreferences = {
   dockColor: "charcoal",
   dockPosition: "bottom-center",
   dockInset: 0,
+  dockWidthOffset: 0,
+  dockHeightOffset: 0,
 };
+
+export const DOCK_WIDTH_OFFSET_MIN = -20;
+export const DOCK_WIDTH_OFFSET_MAX = 80;
+export const DOCK_WIDTH_OFFSET_STEP = 10;
+export const DOCK_HEIGHT_OFFSET_MIN = -12;
+export const DOCK_HEIGHT_OFFSET_MAX = 24;
+export const DOCK_HEIGHT_OFFSET_STEP = 4;
 
 function isOption<T extends string>(
   value: string | undefined,
@@ -85,6 +96,8 @@ export function normalizeDockPreferences(
   preferences: Partial<DockPreferences>,
 ): DockPreferences {
   const dockInset = Number(preferences.dockInset);
+  const dockWidthOffset = Number(preferences.dockWidthOffset);
+  const dockHeightOffset = Number(preferences.dockHeightOffset);
 
   return {
     dockSize: isOption(preferences.dockSize, DOCK_SIZE_OPTIONS)
@@ -102,5 +115,23 @@ export function normalizeDockPreferences(
     dockInset: Number.isFinite(dockInset)
       ? Math.min(80, Math.max(-80, Math.round(dockInset / 10) * 10))
       : DEFAULT_DOCK_PREFERENCES.dockInset,
+    dockWidthOffset: Number.isFinite(dockWidthOffset)
+      ? Math.min(
+          DOCK_WIDTH_OFFSET_MAX,
+          Math.max(
+            DOCK_WIDTH_OFFSET_MIN,
+            Math.round(dockWidthOffset / DOCK_WIDTH_OFFSET_STEP) * DOCK_WIDTH_OFFSET_STEP,
+          ),
+        )
+      : DEFAULT_DOCK_PREFERENCES.dockWidthOffset,
+    dockHeightOffset: Number.isFinite(dockHeightOffset)
+      ? Math.min(
+          DOCK_HEIGHT_OFFSET_MAX,
+          Math.max(
+            DOCK_HEIGHT_OFFSET_MIN,
+            Math.round(dockHeightOffset / DOCK_HEIGHT_OFFSET_STEP) * DOCK_HEIGHT_OFFSET_STEP,
+          ),
+        )
+      : DEFAULT_DOCK_PREFERENCES.dockHeightOffset,
   };
 }

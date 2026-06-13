@@ -3,10 +3,47 @@ use std::path::PathBuf;
 
 use crate::settings::TextTransform;
 
+#[derive(Debug, PartialEq)]
+struct TranscriptionLanguageHint {
+    language: Option<String>,
+    prompt: Option<String>,
+}
+
+fn transcription_language_hint(languages: &[String]) -> TranscriptionLanguageHint {
+    let codes = languages
+        .iter()
+        .map(|language| language.trim().to_lowercase())
+        .filter(|language| !language.is_empty())
+        .collect::<Vec<_>>();
+
+    if codes.len() == 1 {
+        return TranscriptionLanguageHint {
+            language: Some(codes[0].clone()),
+            prompt: None,
+        };
+    }
+
+    if codes.len() > 1 {
+        return TranscriptionLanguageHint {
+            language: None,
+            prompt: Some(format!(
+                "Possible spoken language codes: {}. Transcribe in the spoken language and preserve the original language.",
+                codes.join(", ")
+            )),
+        };
+    }
+
+    TranscriptionLanguageHint {
+        language: Some("en".to_string()),
+        prompt: None,
+    }
+}
+
 pub async fn transcribe_groq(
     api_key: &str,
     audio_path: &PathBuf,
     model: &str,
+    languages: &[String],
 ) -> Result<String, String> {
     if api_key.is_empty() {
         return Err("Groq API key not set. Please enter your API key in settings.".to_string());
@@ -20,11 +57,17 @@ pub async fn transcribe_groq(
         .mime_str("audio/wav")
         .map_err(|e| e.to_string())?;
 
-    let form = multipart::Form::new()
+    let language_hint = transcription_language_hint(languages);
+    let mut form = multipart::Form::new()
         .text("model", model.to_string())
-        .text("language", "en")
         .text("response_format", "json")
         .part("file", file_part);
+    if let Some(language) = language_hint.language {
+        form = form.text("language", language);
+    }
+    if let Some(prompt) = language_hint.prompt {
+        form = form.text("prompt", prompt);
+    }
 
     let client = reqwest::Client::new();
     let response = client
@@ -121,9 +164,28 @@ mod tests {
     #[tokio::test]
     async fn test_empty_api_key() {
         let path = PathBuf::from("/tmp/test.wav");
-        let result = transcribe_groq("", &path, "whisper-large-v3-turbo").await;
+        let result =
+            transcribe_groq("", &path, "whisper-large-v3-turbo", &["en".to_string()]).await;
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("API key not set"));
+    }
+
+    #[test]
+    fn test_transcription_language_hint_single_language() {
+        assert_eq!(
+            transcription_language_hint(&["ur".to_string()]),
+            TranscriptionLanguageHint {
+                language: Some("ur".to_string()),
+                prompt: None,
+            }
+        );
+    }
+
+    #[test]
+    fn test_transcription_language_hint_multiple_languages() {
+        let hint = transcription_language_hint(&["en".to_string(), "ur".to_string()]);
+        assert_eq!(hint.language, None);
+        assert!(hint.prompt.unwrap().contains("en, ur"));
     }
 
     #[tokio::test]

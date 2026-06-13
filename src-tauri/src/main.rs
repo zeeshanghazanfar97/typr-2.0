@@ -1,11 +1,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc, Mutex,
 };
 use std::thread::JoinHandle;
+use std::{env, fs};
 use tauri::{
     Emitter, LogicalPosition, LogicalSize, Manager, Position, Size, State, WebviewUrl,
     WebviewWindowBuilder,
@@ -137,6 +138,110 @@ fn get_app_dir() -> PathBuf {
         .join("com.typr.app")
 }
 
+#[cfg(target_os = "macos")]
+const START_ON_LOGIN_LABEL: &str = "com.typr.app.login";
+
+#[cfg(target_os = "macos")]
+fn xml_escape(value: &str) -> String {
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&apos;")
+}
+
+#[cfg(target_os = "macos")]
+fn launch_agent_path() -> Result<PathBuf, String> {
+    let home = dirs::home_dir().ok_or("Could not find home directory".to_string())?;
+    Ok(home
+        .join("Library")
+        .join("LaunchAgents")
+        .join(format!("{}.plist", START_ON_LOGIN_LABEL)))
+}
+
+#[cfg(target_os = "macos")]
+fn current_app_bundle_path(exe_path: &Path) -> Option<PathBuf> {
+    exe_path
+        .ancestors()
+        .find(|path| path.extension().and_then(|extension| extension.to_str()) == Some("app"))
+        .map(Path::to_path_buf)
+}
+
+#[cfg(target_os = "macos")]
+fn start_on_login_program_arguments(exe_path: &Path) -> Vec<String> {
+    if let Some(app_path) = current_app_bundle_path(exe_path) {
+        vec![
+            "/usr/bin/open".to_string(),
+            "-n".to_string(),
+            app_path.to_string_lossy().to_string(),
+        ]
+    } else {
+        vec![exe_path.to_string_lossy().to_string()]
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn launch_agent_plist(program_arguments: &[String]) -> String {
+    let arguments = program_arguments
+        .iter()
+        .map(|argument| format!("    <string>{}</string>", xml_escape(argument)))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>{}</string>
+  <key>ProgramArguments</key>
+  <array>
+{}
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+</dict>
+</plist>
+"#,
+        START_ON_LOGIN_LABEL, arguments
+    )
+}
+
+#[cfg(target_os = "macos")]
+fn set_start_on_login(enabled: bool) -> Result<(), String> {
+    let path = launch_agent_path()?;
+
+    if enabled {
+        let exe_path = env::current_exe().map_err(|e| e.to_string())?;
+        let program_arguments = start_on_login_program_arguments(&exe_path);
+        let plist = launch_agent_plist(&program_arguments);
+        let parent = path
+            .parent()
+            .ok_or("Could not resolve LaunchAgents directory".to_string())?;
+
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        fs::write(path, plist).map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+
+    if path.exists() {
+        fs::remove_file(path).map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}
+
+#[cfg(not(target_os = "macos"))]
+fn set_start_on_login(enabled: bool) -> Result<(), String> {
+    if enabled {
+        Err("Start on login is currently supported on macOS only".to_string())
+    } else {
+        Ok(())
+    }
+}
+
 fn overlay_frame(
     app: &tauri::AppHandle,
     width: f64,
@@ -204,7 +309,45 @@ fn dock_size_scale(size: &str) -> f64 {
     }
 }
 
-fn overlay_preset_for_layout(layout: &str, dock_size: &str) -> Result<OverlayWindowPreset, String> {
+fn min_overlay_preset_for_layout(layout: &str) -> OverlayWindowPreset {
+    match layout {
+        "parked" => OverlayWindowPreset {
+            width: 82.0,
+            height: 34.0,
+        },
+        "dock" => OverlayWindowPreset {
+            width: 340.0,
+            height: 62.0,
+        },
+        "label" => OverlayWindowPreset {
+            width: 340.0,
+            height: 98.0,
+        },
+        "menu" => OverlayWindowPreset {
+            width: 340.0,
+            height: 320.0,
+        },
+        "recording" => OverlayWindowPreset {
+            width: 320.0,
+            height: 70.0,
+        },
+        "status" => OverlayWindowPreset {
+            width: 280.0,
+            height: 58.0,
+        },
+        _ => OverlayWindowPreset {
+            width: 280.0,
+            height: 58.0,
+        },
+    }
+}
+
+fn overlay_preset_for_layout(
+    layout: &str,
+    dock_size: &str,
+    dock_width_offset: i32,
+    dock_height_offset: i32,
+) -> Result<OverlayWindowPreset, String> {
     let preset = match layout {
         "parked" => Ok(OVERLAY_PARKED),
         "dock" => Ok(OVERLAY_DOCK),
@@ -215,10 +358,11 @@ fn overlay_preset_for_layout(layout: &str, dock_size: &str) -> Result<OverlayWin
         _ => Err(format!("Unknown overlay layout: {}", layout)),
     }?;
     let scale = dock_size_scale(dock_size);
+    let min = min_overlay_preset_for_layout(layout);
 
     Ok(OverlayWindowPreset {
-        width: preset.width * scale,
-        height: preset.height * scale,
+        width: ((preset.width * scale) + dock_width_offset as f64).max(min.width),
+        height: ((preset.height * scale) + dock_height_offset as f64).max(min.height),
     })
 }
 
@@ -502,10 +646,12 @@ fn save_settings(
 ) -> Result<(), String> {
     settings.hotkey = settings.hotkey.trim().to_string();
     settings.normalize_model_preferences();
+    settings.normalize_language_preferences();
     settings.normalize_dock_preferences();
     settings.normalize_transforms();
     let previous_hotkey = state.settings.lock().unwrap().hotkey.clone();
     update_registered_hotkey(&app, state.inner(), &previous_hotkey, &settings.hotkey)?;
+    set_start_on_login(settings.start_on_login)?;
 
     settings.save(&state.app_dir)?;
     *state.settings.lock().unwrap() = settings.clone();
@@ -556,7 +702,12 @@ fn set_overlay_layout(
         .get_webview_window("overlay")
         .ok_or("Overlay window not found".to_string())?;
     let settings = state.settings.lock().unwrap().clone();
-    let preset = overlay_preset_for_layout(&layout, &settings.dock_size)?;
+    let preset = overlay_preset_for_layout(
+        &layout,
+        &settings.dock_size,
+        settings.dock_width_offset,
+        settings.dock_height_offset,
+    )?;
     let width = preset.width;
     let height = preset.height;
     let (x, y) = overlay_frame(
@@ -669,6 +820,11 @@ async fn do_toggle_recording(app: &tauri::AppHandle, state: &AppState) -> Result
 fn main() {
     let app_dir = get_app_dir();
     let settings = Settings::load(&app_dir);
+    if settings.start_on_login {
+        if let Err(e) = set_start_on_login(true) {
+            eprintln!("[Typr] Failed to refresh start on login item: {}", e);
+        }
+    }
     let app_dir_for_setup = app_dir.clone();
 
     tauri::Builder::default()
@@ -700,8 +856,13 @@ fn main() {
         .setup(move |app| {
             let handle = app.handle().clone();
             let initial_settings = Settings::load(&app_dir_for_setup);
-            let initial_preset = overlay_preset_for_layout("parked", &initial_settings.dock_size)
-                .unwrap_or(OVERLAY_PARKED);
+            let initial_preset = overlay_preset_for_layout(
+                "parked",
+                &initial_settings.dock_size,
+                initial_settings.dock_width_offset,
+                initial_settings.dock_height_offset,
+            )
+            .unwrap_or(OVERLAY_PARKED);
             let (x, y) = overlay_frame(
                 &handle,
                 initial_preset.width,
@@ -759,5 +920,35 @@ mod tests {
         assert_eq!(clamp_axis_to_screen(-24.0, 0.0, 1440.0, 120.0), 0.0);
         assert_eq!(clamp_axis_to_screen(1360.0, 0.0, 1440.0, 120.0), 1320.0);
         assert_eq!(clamp_axis_to_screen(48.0, 0.0, 1440.0, 120.0), 48.0);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn launch_agent_plist_escapes_program_arguments() {
+        let plist = launch_agent_plist(&[
+            "/usr/bin/open".to_string(),
+            "/Applications/Typr & More.app".to_string(),
+        ]);
+
+        assert!(plist.contains("<string>com.typr.app.login</string>"));
+        assert!(plist.contains("<string>/Applications/Typr &amp; More.app</string>"));
+        assert!(plist.contains("<key>RunAtLoad</key>"));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn start_on_login_arguments_open_app_bundle_when_available() {
+        let args = start_on_login_program_arguments(Path::new(
+            "/Applications/Typr.app/Contents/MacOS/typr",
+        ));
+
+        assert_eq!(
+            args,
+            vec![
+                "/usr/bin/open".to_string(),
+                "-n".to_string(),
+                "/Applications/Typr.app".to_string(),
+            ]
+        );
     }
 }

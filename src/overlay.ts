@@ -30,6 +30,8 @@ interface Settings {
   dockColor: DockPreferences["dockColor"];
   dockPosition: DockPreferences["dockPosition"];
   dockInset: DockPreferences["dockInset"];
+  dockWidthOffset: DockPreferences["dockWidthOffset"];
+  dockHeightOffset: DockPreferences["dockHeightOffset"];
   hotkey: string;
 }
 
@@ -43,7 +45,14 @@ interface AudioLevelPayload {
   level: number;
 }
 
-type VisualState = "ready" | "recording" | "transcribing" | "polishing" | "inserted" | "polished";
+type VisualState =
+  | "ready"
+  | "recording"
+  | "transcribing"
+  | "polishing"
+  | "inserted"
+  | "polished"
+  | "canceled";
 type OverlayLayout = "parked" | "dock" | "label" | "menu" | "recording" | "status";
 type TipTarget = "dictate" | "transform" | "caret" | "notes";
 
@@ -91,6 +100,7 @@ let recordingTimerInterval: number | undefined;
 let waveformDecayInterval: number | undefined;
 let waveformLevels = Array.from({ length: WAVEFORM_BAR_COUNT }, () => 0);
 let currentLayoutKey: string | null = null;
+let holdCanceledOnReady = false;
 
 function escapeHtml(value: string) {
   return value
@@ -130,6 +140,7 @@ function normalizeState(state: string): VisualState {
   if (normalized === "polishing") return "polishing";
   if (normalized === "inserted") return "inserted";
   if (normalized === "polished") return "polished";
+  if (normalized === "canceled" || normalized === "cancelled") return "canceled";
   return "ready";
 }
 
@@ -155,7 +166,14 @@ function overlayLayout(): OverlayLayout {
 function syncOverlayLayout() {
   const layout = overlayLayout();
   const preferences = normalizeDockPreferences(settings ?? {});
-  const layoutKey = `${layout}:${preferences.dockSize}:${preferences.dockPosition}:${preferences.dockInset}`;
+  const layoutKey = [
+    layout,
+    preferences.dockSize,
+    preferences.dockPosition,
+    preferences.dockInset,
+    preferences.dockWidthOffset,
+    preferences.dockHeightOffset,
+  ].join(":");
   if (layoutKey === currentLayoutKey) return;
   currentLayoutKey = layoutKey;
 
@@ -187,6 +205,11 @@ function applyDockPreferences() {
   body.dataset.dockShape = preferences.dockShape;
   body.dataset.dockColor = preferences.dockColor;
   body.dataset.dockPosition = preferences.dockPosition;
+  body.style.setProperty("--dock-width-tune", `${preferences.dockWidthOffset}px`);
+  body.style.setProperty("--dock-width-tune-half", `${Math.round(preferences.dockWidthOffset / 2)}px`);
+  body.style.setProperty("--dock-width-tune-menu", `${Math.round(preferences.dockWidthOffset * 1.4)}px`);
+  body.style.setProperty("--dock-height-tune", `${preferences.dockHeightOffset}px`);
+  body.style.setProperty("--dock-height-tune-half", `${Math.round(preferences.dockHeightOffset / 2)}px`);
 }
 
 function createTransformOption(transform: TextTransform, selectedId: string) {
@@ -509,7 +532,19 @@ function stopRecordingUi() {
 function setVisualState(nextState: VisualState) {
   window.clearTimeout(completionTimer);
 
+  if (nextState === "canceled") {
+    holdCanceledOnReady = true;
+  } else if (nextState !== "ready") {
+    holdCanceledOnReady = false;
+  }
+
   if (nextState === "ready") {
+    if (visualState === "canceled" && holdCanceledOnReady) {
+      holdCanceledOnReady = false;
+      completionTimer = window.setTimeout(() => setVisualState("ready"), 1200);
+      return;
+    }
+
     const nextCompletion = completionState(visualState);
     if (nextCompletion !== "ready") {
       setVisualState(nextCompletion);

@@ -54,6 +54,11 @@ fn update_overlay_state(app: &AppHandle, state_name: &str) {
     }
 }
 
+fn emit_canceled_state(app: &AppHandle) {
+    let _ = app.emit("recording-state", "Canceled");
+    update_overlay_state(app, "canceled");
+}
+
 pub struct Recorder {
     state: Arc<Mutex<RecordingState>>,
     audio_recorder: Arc<Mutex<AudioRecorder>>,
@@ -141,6 +146,7 @@ impl Recorder {
         }
         self.stop_audio_level_watcher();
 
+        emit_canceled_state(app);
         *state = RecordingState::Ready;
         let _ = app.emit("recording-state", RecordingState::Ready);
         update_overlay(app, &RecordingState::Ready);
@@ -173,20 +179,31 @@ impl Recorder {
                 recorder.stop_and_save(&temp_path)
             };
             self.stop_audio_level_watcher();
-            save_result?;
+            let recording = save_result?;
+            if recording.should_cancel_transcription {
+                emit_canceled_state(app);
+                return Ok(String::new());
+            }
 
             // Transcribe
             let raw_text = match settings.engine.as_str() {
                 "local" => {
                     let model_path =
                         app_dir.join(transcribe_local::model_filename(&settings.whisper_model));
-                    transcribe_local::transcribe_local(app, &model_path, &temp_path).await?
+                    transcribe_local::transcribe_local(
+                        app,
+                        &model_path,
+                        &temp_path,
+                        &settings.transcript_languages,
+                    )
+                    .await?
                 }
                 "cloud" => {
                     transcribe_groq::transcribe_groq(
                         &settings.groq_api_key,
                         &temp_path,
                         settings.transcript_model(),
+                        &settings.transcript_languages,
                     )
                     .await?
                 }
@@ -267,6 +284,7 @@ impl Recorder {
                 settings.microphone.clone(),
                 settings.transcript_model().to_string(),
                 settings.whisper_model.clone(),
+                settings.transcript_languages.clone(),
                 raw_text,
                 cleaned_raw,
                 final_text.clone(),

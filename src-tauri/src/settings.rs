@@ -9,6 +9,10 @@ fn default_auto_polish() -> bool {
     true
 }
 
+fn default_start_on_login() -> bool {
+    false
+}
+
 fn default_transform() -> String {
     "polish".to_string()
 }
@@ -33,9 +37,31 @@ fn default_dock_inset() -> i32 {
     0
 }
 
+fn default_dock_width_offset() -> i32 {
+    0
+}
+
+fn default_dock_height_offset() -> i32 {
+    0
+}
+
 fn default_model_mode() -> String {
     "default".to_string()
 }
+
+fn default_transcript_languages() -> Vec<String> {
+    vec!["en".to_string()]
+}
+
+const SUPPORTED_TRANSCRIPT_LANGUAGE_CODES: &[&str] = &[
+    "af", "am", "ar", "as", "az", "ba", "be", "bg", "bn", "bo", "br", "bs", "ca", "cs", "cy", "da",
+    "de", "el", "en", "es", "et", "eu", "fa", "fi", "fo", "fr", "gl", "gu", "ha", "haw", "he",
+    "hi", "hr", "ht", "hu", "hy", "id", "is", "it", "ja", "jw", "ka", "kk", "km", "kn", "ko", "la",
+    "lb", "ln", "lo", "lt", "lv", "mg", "mi", "mk", "ml", "mn", "mr", "ms", "mt", "my", "ne", "nl",
+    "nn", "no", "oc", "pa", "pl", "ps", "pt", "ro", "ru", "sa", "sd", "si", "sk", "sl", "sn", "so",
+    "sq", "sr", "su", "sv", "sw", "ta", "te", "tg", "th", "tk", "tl", "tr", "tt", "uk", "ur", "uz",
+    "vi", "yi", "yo", "zh", "yue",
+];
 
 const LEGACY_POLISH_PROMPT: &str = "You polish dictated speech-to-text transcripts. Return only the final corrected text. Preserve the speaker's meaning and do not add new facts. Apply explicit self-corrections, for example when the speaker says correction, I mean, rather, or sorry, keep the corrected wording and remove the abandoned wording. Remove filler words and accidental repetitions only when they are not meaningful. Restore punctuation and capitalization.";
 
@@ -105,6 +131,11 @@ pub struct Settings {
     pub transcript_model_mode: String,
     #[serde(rename = "transcriptModelId", default)]
     pub transcript_model_id: String,
+    #[serde(
+        rename = "transcriptLanguages",
+        default = "default_transcript_languages"
+    )]
+    pub transcript_languages: Vec<String>,
     #[serde(rename = "transformModelMode", default = "default_model_mode")]
     pub transform_model_mode: String,
     #[serde(rename = "transformModelId", default)]
@@ -117,6 +148,8 @@ pub struct Settings {
     pub transforms: Vec<TextTransform>,
     #[serde(rename = "recordingMode")]
     pub recording_mode: String,
+    #[serde(rename = "startOnLogin", default = "default_start_on_login")]
+    pub start_on_login: bool,
     #[serde(rename = "dockSize", default = "default_dock_size")]
     pub dock_size: String,
     #[serde(rename = "dockShape", default = "default_dock_shape")]
@@ -127,6 +160,10 @@ pub struct Settings {
     pub dock_position: String,
     #[serde(rename = "dockInset", default = "default_dock_inset")]
     pub dock_inset: i32,
+    #[serde(rename = "dockWidthOffset", default = "default_dock_width_offset")]
+    pub dock_width_offset: i32,
+    #[serde(rename = "dockHeightOffset", default = "default_dock_height_offset")]
+    pub dock_height_offset: i32,
     pub hotkey: String,
 }
 
@@ -139,17 +176,21 @@ impl Default for Settings {
             groq_api_key: String::new(),
             transcript_model_mode: default_model_mode(),
             transcript_model_id: String::new(),
+            transcript_languages: default_transcript_languages(),
             transform_model_mode: default_model_mode(),
             transform_model_id: String::new(),
             auto_polish: true,
             default_transform: default_transform(),
             transforms: default_transforms(),
             recording_mode: "toggle".to_string(),
+            start_on_login: false,
             dock_size: default_dock_size(),
             dock_shape: default_dock_shape(),
             dock_color: default_dock_color(),
             dock_position: default_dock_position(),
             dock_inset: default_dock_inset(),
+            dock_width_offset: default_dock_width_offset(),
+            dock_height_offset: default_dock_height_offset(),
             hotkey: DEFAULT_HOTKEY.to_string(),
         }
     }
@@ -169,6 +210,7 @@ impl Settings {
                         settings.hotkey = DEFAULT_HOTKEY.to_string();
                     }
                     settings.normalize_model_preferences();
+                    settings.normalize_language_preferences();
                     settings.normalize_dock_preferences();
                     settings.normalize_transforms();
                     settings
@@ -184,6 +226,7 @@ impl Settings {
         fs::create_dir_all(app_dir).map_err(|e| e.to_string())?;
         let mut settings = self.clone();
         settings.normalize_model_preferences();
+        settings.normalize_language_preferences();
         settings.normalize_dock_preferences();
         settings.normalize_transforms();
         let json = serde_json::to_string_pretty(&settings).map_err(|e| e.to_string())?;
@@ -211,6 +254,25 @@ impl Settings {
         } else {
             DEFAULT_TRANSFORM_MODEL_ID
         }
+    }
+
+    pub fn normalize_language_preferences(&mut self) {
+        let mut normalized = Vec::new();
+
+        for language in &self.transcript_languages {
+            let code = language.trim().to_lowercase();
+            if SUPPORTED_TRANSCRIPT_LANGUAGE_CODES.contains(&code.as_str())
+                && !normalized.contains(&code)
+            {
+                normalized.push(code);
+            }
+        }
+
+        if normalized.is_empty() {
+            normalized = default_transcript_languages();
+        }
+
+        self.transcript_languages = normalized;
     }
 
     pub fn normalize_model_preferences(&mut self) {
@@ -319,6 +381,10 @@ impl Settings {
 
         self.dock_inset = self.dock_inset.clamp(-80, 80);
         self.dock_inset = ((self.dock_inset as f64 / 10.0).round() as i32) * 10;
+        self.dock_width_offset = self.dock_width_offset.clamp(-20, 80);
+        self.dock_width_offset = ((self.dock_width_offset as f64 / 10.0).round() as i32) * 10;
+        self.dock_height_offset = self.dock_height_offset.clamp(-12, 24);
+        self.dock_height_offset = ((self.dock_height_offset as f64 / 4.0).round() as i32) * 4;
     }
 }
 
@@ -337,6 +403,7 @@ mod tests {
         assert_eq!(settings.transcript_model_mode, "default");
         assert_eq!(settings.transcript_model_id, "");
         assert_eq!(settings.transcript_model(), DEFAULT_TRANSCRIPT_MODEL_ID);
+        assert_eq!(settings.transcript_languages, vec!["en"]);
         assert_eq!(settings.transform_model_mode, "default");
         assert_eq!(settings.transform_model_id, "");
         assert_eq!(settings.transform_model(), DEFAULT_TRANSFORM_MODEL_ID);
@@ -352,11 +419,14 @@ mod tests {
             .system_prompt
             .contains("Role & stance:"));
         assert_eq!(settings.recording_mode, "toggle");
+        assert!(!settings.start_on_login);
         assert_eq!(settings.dock_size, "regular");
         assert_eq!(settings.dock_shape, "pill");
         assert_eq!(settings.dock_color, "charcoal");
         assert_eq!(settings.dock_position, "bottom-center");
         assert_eq!(settings.dock_inset, 0);
+        assert_eq!(settings.dock_width_offset, 0);
+        assert_eq!(settings.dock_height_offset, 0);
         assert_eq!(settings.hotkey, "Ctrl+Option+Space");
     }
 
@@ -370,13 +440,17 @@ mod tests {
         settings.groq_api_key = "test-key-123".to_string();
         settings.transcript_model_mode = "custom".to_string();
         settings.transcript_model_id = "whisper-large-v3".to_string();
+        settings.transcript_languages = vec!["ur".to_string(), "en".to_string()];
         settings.transform_model_mode = "custom".to_string();
         settings.transform_model_id = "llama-3.3-70b-versatile".to_string();
+        settings.start_on_login = true;
         settings.dock_size = "large".to_string();
         settings.dock_shape = "rounded".to_string();
         settings.dock_color = "moss".to_string();
         settings.dock_position = "top-right".to_string();
         settings.dock_inset = 30;
+        settings.dock_width_offset = 40;
+        settings.dock_height_offset = 12;
 
         settings.save(&dir).unwrap();
         let loaded = Settings::load(&dir);
@@ -386,9 +460,11 @@ mod tests {
         assert_eq!(loaded.transcript_model_mode, "custom");
         assert_eq!(loaded.transcript_model_id, "whisper-large-v3");
         assert_eq!(loaded.transcript_model(), "whisper-large-v3");
+        assert_eq!(loaded.transcript_languages, vec!["ur", "en"]);
         assert_eq!(loaded.transform_model_mode, "custom");
         assert_eq!(loaded.transform_model_id, "llama-3.3-70b-versatile");
         assert_eq!(loaded.transform_model(), "llama-3.3-70b-versatile");
+        assert!(loaded.start_on_login);
         assert!(loaded.auto_polish);
         assert_eq!(loaded.transforms.len(), 2);
         assert_eq!(loaded.dock_size, "large");
@@ -396,6 +472,8 @@ mod tests {
         assert_eq!(loaded.dock_color, "moss");
         assert_eq!(loaded.dock_position, "top-right");
         assert_eq!(loaded.dock_inset, 30);
+        assert_eq!(loaded.dock_width_offset, 40);
+        assert_eq!(loaded.dock_height_offset, 12);
 
         let _ = fs::remove_dir_all(&dir);
     }
@@ -425,13 +503,17 @@ mod tests {
         assert_eq!(loaded.transforms.len(), 2);
         assert_eq!(loaded.transcript_model_mode, "default");
         assert_eq!(loaded.transcript_model_id, "");
+        assert_eq!(loaded.transcript_languages, vec!["en"]);
         assert_eq!(loaded.transform_model_mode, "default");
         assert_eq!(loaded.transform_model_id, "");
+        assert!(!loaded.start_on_login);
         assert_eq!(loaded.dock_size, "regular");
         assert_eq!(loaded.dock_shape, "pill");
         assert_eq!(loaded.dock_color, "charcoal");
         assert_eq!(loaded.dock_position, "bottom-center");
         assert_eq!(loaded.dock_inset, 0);
+        assert_eq!(loaded.dock_width_offset, 0);
+        assert_eq!(loaded.dock_height_offset, 0);
 
         let _ = fs::remove_dir_all(&dir);
     }
@@ -560,6 +642,8 @@ mod tests {
         settings.dock_color = "neon".to_string();
         settings.dock_position = "middle".to_string();
         settings.dock_inset = 87;
+        settings.dock_width_offset = 83;
+        settings.dock_height_offset = -15;
 
         settings.normalize_dock_preferences();
 
@@ -568,6 +652,34 @@ mod tests {
         assert_eq!(settings.dock_color, "charcoal");
         assert_eq!(settings.dock_position, "bottom-center");
         assert_eq!(settings.dock_inset, 80);
+        assert_eq!(settings.dock_width_offset, 80);
+        assert_eq!(settings.dock_height_offset, -12);
+    }
+
+    #[test]
+    fn test_normalize_language_preferences_repairs_invalid_values() {
+        let mut settings = Settings::default();
+        settings.transcript_languages = vec![
+            "UR".to_string(),
+            "invalid".to_string(),
+            "en".to_string(),
+            "ur".to_string(),
+            " yue ".to_string(),
+        ];
+
+        settings.normalize_language_preferences();
+
+        assert_eq!(settings.transcript_languages, vec!["ur", "en", "yue"]);
+    }
+
+    #[test]
+    fn test_normalize_language_preferences_falls_back_to_english() {
+        let mut settings = Settings::default();
+        settings.transcript_languages = vec!["invalid".to_string()];
+
+        settings.normalize_language_preferences();
+
+        assert_eq!(settings.transcript_languages, vec!["en"]);
     }
 
     #[test]

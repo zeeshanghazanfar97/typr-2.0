@@ -41,6 +41,8 @@ pub struct TranscriptHistoryEntry {
     pub transcript_model: String,
     #[serde(rename = "whisperModel")]
     pub whisper_model: String,
+    #[serde(rename = "transcriptLanguages", default)]
+    pub transcript_languages: Vec<String>,
     #[serde(rename = "rawTranscript")]
     pub raw_transcript: String,
     #[serde(rename = "cleanedTranscript")]
@@ -75,6 +77,7 @@ impl TranscriptHistoryEntry {
         microphone: String,
         transcript_model: String,
         whisper_model: String,
+        transcript_languages: Vec<String>,
         raw_transcript: String,
         cleaned_transcript: String,
         final_text: String,
@@ -89,6 +92,7 @@ impl TranscriptHistoryEntry {
             microphone,
             transcript_model,
             whisper_model,
+            transcript_languages,
             raw_transcript,
             cleaned_transcript,
             final_text,
@@ -209,6 +213,7 @@ mod tests {
             microphone: "default".to_string(),
             transcript_model: "whisper-large-v3-turbo".to_string(),
             whisper_model: "small".to_string(),
+            transcript_languages: vec!["en".to_string(), "ur".to_string()],
             raw_transcript: "raw words".to_string(),
             cleaned_transcript: "Raw words.".to_string(),
             final_text: "Final words.".to_string(),

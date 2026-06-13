@@ -3,10 +3,16 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   DEFAULT_DOCK_PREFERENCES,
+  DOCK_HEIGHT_OFFSET_MAX,
+  DOCK_HEIGHT_OFFSET_MIN,
+  DOCK_HEIGHT_OFFSET_STEP,
   DOCK_INSET_OPTIONS,
   DOCK_POSITION_OPTIONS,
   DOCK_SHAPE_OPTIONS,
   DOCK_SIZE_OPTIONS,
+  DOCK_WIDTH_OFFSET_MAX,
+  DOCK_WIDTH_OFFSET_MIN,
+  DOCK_WIDTH_OFFSET_STEP,
   type DockColor,
   type DockPreferences,
   normalizeDockPreferences,
@@ -19,6 +25,11 @@ import {
   getTransformIconSvg,
   normalizeTransforms,
 } from "./transforms";
+import {
+  TRANSCRIPT_LANGUAGES,
+  getLanguageName,
+  normalizeTranscriptLanguages,
+} from "./languages";
 
 interface Settings {
   microphone: string;
@@ -27,17 +38,21 @@ interface Settings {
   groqApiKey: string;
   transcriptModelMode: ModelMode;
   transcriptModelId: string;
+  transcriptLanguages: string[];
   transformModelMode: ModelMode;
   transformModelId: string;
   autoPolish: boolean;
   defaultTransform: string;
   transforms: TextTransform[];
   recordingMode: string;
+  startOnLogin: boolean;
   dockSize: DockPreferences["dockSize"];
   dockShape: DockPreferences["dockShape"];
   dockColor: DockPreferences["dockColor"];
   dockPosition: DockPreferences["dockPosition"];
   dockInset: DockPreferences["dockInset"];
+  dockWidthOffset: DockPreferences["dockWidthOffset"];
+  dockHeightOffset: DockPreferences["dockHeightOffset"];
   hotkey: string;
 }
 
@@ -82,6 +97,7 @@ interface TranscriptHistoryEntry {
   microphone: string;
   transcriptModel: string;
   whisperModel: string;
+  transcriptLanguages: string[];
   rawTranscript: string;
   cleanedTranscript: string;
   finalText: string;
@@ -104,9 +120,13 @@ const downloadBtn = document.getElementById("download-btn")!;
 const downloadProgress = document.getElementById("download-progress")!;
 const progressFill = document.getElementById("progress-fill")!;
 const groqKey = document.getElementById("groq-key") as HTMLInputElement;
+const startLoginToggle = document.getElementById("start-login-toggle") as HTMLButtonElement;
 const transcriptModelDefault = document.getElementById("transcript-model-default") as HTMLButtonElement;
 const transcriptModelCustom = document.getElementById("transcript-model-custom") as HTMLButtonElement;
 const transcriptModelInput = document.getElementById("transcript-model-id") as HTMLInputElement;
+const languageSelect = document.getElementById("language-select") as HTMLSelectElement;
+const languageAddBtn = document.getElementById("language-add-btn") as HTMLButtonElement;
+const languageList = document.getElementById("language-list")!;
 const autoPolishToggle = document.getElementById("auto-polish-toggle") as HTMLButtonElement;
 const defaultTransformSelect = document.getElementById("default-transform-select") as HTMLSelectElement;
 const transformModelDefault = document.getElementById("transform-model-default") as HTMLButtonElement;
@@ -116,6 +136,12 @@ const addTransformBtn = document.getElementById("add-transform-btn") as HTMLButt
 const transformCount = document.getElementById("transform-count")!;
 const transformList = document.getElementById("transform-list")!;
 const dockSizeSelect = document.getElementById("dock-size-select") as HTMLSelectElement;
+const dockWidthMinus = document.getElementById("dock-width-minus") as HTMLButtonElement;
+const dockWidthPlus = document.getElementById("dock-width-plus") as HTMLButtonElement;
+const dockWidthValue = document.getElementById("dock-width-value")!;
+const dockHeightMinus = document.getElementById("dock-height-minus") as HTMLButtonElement;
+const dockHeightPlus = document.getElementById("dock-height-plus") as HTMLButtonElement;
+const dockHeightValue = document.getElementById("dock-height-value")!;
 const dockShapeSelect = document.getElementById("dock-shape-select") as HTMLSelectElement;
 const dockPositionSelect = document.getElementById("dock-position-select") as HTMLSelectElement;
 const dockInsetSelect = document.getElementById("dock-inset-select") as HTMLSelectElement;
@@ -177,6 +203,7 @@ sidebar.addEventListener("mousedown", (e) => {
 let currentSettings: Settings;
 let isCapturingHotkey = false;
 let currentHistory: TranscriptHistoryEntry[] = [];
+let recordingStatusFlashTimer: number | undefined;
 const historyAudioUrls = new Map<string, string>();
 
 function normalizeModelMode(mode: string | undefined): ModelMode {
@@ -221,6 +248,78 @@ function renderModelSettings() {
     transformModelDefault,
     transformModelCustom,
     transformModelInput,
+  );
+}
+
+function populateLanguageSelect() {
+  languageSelect.replaceChildren(
+    ...TRANSCRIPT_LANGUAGES.map((language) => {
+      const option = document.createElement("option");
+      option.value = language.code;
+      option.textContent = `${language.name} (${language.code})`;
+      return option;
+    }),
+  );
+}
+
+function ensureLanguageSettings() {
+  currentSettings.transcriptLanguages = normalizeTranscriptLanguages(
+    currentSettings.transcriptLanguages,
+  );
+}
+
+function formatHistoryLanguageSummary(languages: string[] | undefined) {
+  const codes = (languages ?? []).filter(Boolean);
+  if (!codes.length) return "Languages not saved";
+  if (codes.length === 1) return `Language ${getLanguageName(codes[0])}`;
+  if (codes.length <= 3) return `Languages ${codes.map(getLanguageName).join(", ")}`;
+  return `Languages ${codes.length} selected`;
+}
+
+function renderLanguageSettings() {
+  ensureLanguageSettings();
+  const selected = new Set(currentSettings.transcriptLanguages);
+  const firstAvailable = TRANSCRIPT_LANGUAGES.find((language) => !selected.has(language.code));
+
+  for (const option of Array.from(languageSelect.options)) {
+    option.disabled = selected.has(option.value);
+  }
+
+  if (firstAvailable) {
+    languageSelect.value = firstAvailable.code;
+    languageSelect.disabled = false;
+    languageAddBtn.disabled = false;
+  } else {
+    languageSelect.value = currentSettings.transcriptLanguages[0] ?? "en";
+    languageSelect.disabled = true;
+    languageAddBtn.disabled = true;
+  }
+
+  languageList.replaceChildren(
+    ...currentSettings.transcriptLanguages.map((code) => {
+      const chip = document.createElement("span");
+      chip.className = "language-chip";
+
+      const label = document.createElement("span");
+      label.textContent = `${getLanguageName(code)} (${code})`;
+
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.setAttribute("aria-label", `Remove ${getLanguageName(code)}`);
+      remove.textContent = "\u00d7";
+      remove.disabled = currentSettings.transcriptLanguages.length <= 1;
+      remove.addEventListener("click", () => {
+        if (currentSettings.transcriptLanguages.length <= 1) return;
+        currentSettings.transcriptLanguages = currentSettings.transcriptLanguages.filter(
+          (language) => language !== code,
+        );
+        renderLanguageSettings();
+        saveAndReport("Failed to save transcript languages:");
+      });
+
+      chip.append(label, remove);
+      return chip;
+    }),
   );
 }
 
@@ -313,6 +412,13 @@ function ensureDockSettings() {
   currentSettings.dockColor = preferences.dockColor;
   currentSettings.dockPosition = preferences.dockPosition;
   currentSettings.dockInset = preferences.dockInset;
+  currentSettings.dockWidthOffset = preferences.dockWidthOffset;
+  currentSettings.dockHeightOffset = preferences.dockHeightOffset;
+}
+
+function formatDimensionOffset(value: number) {
+  if (value === 0) return "Base";
+  return `${value > 0 ? "+" : ""}${value} px`;
 }
 
 function renderDockSettings() {
@@ -321,6 +427,12 @@ function renderDockSettings() {
   dockShapeSelect.value = currentSettings.dockShape;
   dockPositionSelect.value = currentSettings.dockPosition;
   dockInsetSelect.value = String(currentSettings.dockInset);
+  dockWidthValue.textContent = formatDimensionOffset(currentSettings.dockWidthOffset);
+  dockHeightValue.textContent = formatDimensionOffset(currentSettings.dockHeightOffset);
+  dockWidthMinus.disabled = currentSettings.dockWidthOffset <= DOCK_WIDTH_OFFSET_MIN;
+  dockWidthPlus.disabled = currentSettings.dockWidthOffset >= DOCK_WIDTH_OFFSET_MAX;
+  dockHeightMinus.disabled = currentSettings.dockHeightOffset <= DOCK_HEIGHT_OFFSET_MIN;
+  dockHeightPlus.disabled = currentSettings.dockHeightOffset >= DOCK_HEIGHT_OFFSET_MAX;
 
   for (const option of dockColorOptions) {
     const selected = option.dataset.dockColor === currentSettings.dockColor;
@@ -334,6 +446,21 @@ function saveDockPreference(patch: Partial<DockPreferences>) {
   Object.assign(currentSettings, patch);
   renderDockSettings();
   saveSettings();
+}
+
+function stepDockDimension(dimension: "width" | "height", direction: -1 | 1) {
+  if (dimension === "width") {
+    saveDockPreference({
+      dockWidthOffset:
+        currentSettings.dockWidthOffset + direction * DOCK_WIDTH_OFFSET_STEP,
+    });
+    return;
+  }
+
+  saveDockPreference({
+    dockHeightOffset:
+      currentSettings.dockHeightOffset + direction * DOCK_HEIGHT_OFFSET_STEP,
+  });
 }
 
 function ensureTransformSettings() {
@@ -712,6 +839,7 @@ function renderHistoryEntry(entry: TranscriptHistoryEntry) {
         : `Local ${entry.whisperModel || "small"}`,
       "muted",
     ),
+    createHistoryPill(formatHistoryLanguageSummary(entry.transcriptLanguages), "muted"),
   );
   if (entry.transform?.model) {
     modelMeta.append(createHistoryPill(`Transform ${entry.transform.model}`, "muted"));
@@ -765,14 +893,17 @@ async function loadHistory() {
 function applySettingsToControls() {
   ensureDockSettings();
   ensureModelSettings();
+  ensureLanguageSettings();
   ensureTransformSettings();
   micSelect.value = currentSettings.microphone;
   setEngine(currentSettings.engine);
   modelSelect.value = currentSettings.whisperModel;
   groqKey.value = currentSettings.groqApiKey;
+  setStartOnLogin(currentSettings.startOnLogin ?? false);
   setAutoPolish(currentSettings.autoPolish);
   setRecordingMode(currentSettings.recordingMode);
   renderModelSettings();
+  renderLanguageSettings();
   renderDockSettings();
   renderTransforms();
   renderHotkey();
@@ -815,6 +946,12 @@ function setAutoPolish(enabled: boolean) {
   autoPolishToggle.setAttribute("aria-checked", String(enabled));
 }
 
+function setStartOnLogin(enabled: boolean) {
+  currentSettings.startOnLogin = enabled;
+  startLoginToggle.classList.toggle("active", enabled);
+  startLoginToggle.setAttribute("aria-checked", String(enabled));
+}
+
 async function checkModelStatus() {
   const downloaded = await invoke<boolean>("check_model_downloaded", {
     modelSize: modelSelect.value,
@@ -826,6 +963,7 @@ async function checkModelStatus() {
 async function saveSettings() {
   ensureDockSettings();
   ensureModelSettings();
+  ensureLanguageSettings();
   ensureTransformSettings();
   currentSettings.microphone = micSelect.value;
   currentSettings.whisperModel = modelSelect.value;
@@ -928,6 +1066,21 @@ engineCloud.addEventListener("click", () => {
 
 micSelect.addEventListener("change", () => saveSettings());
 
+startLoginToggle.addEventListener("click", async () => {
+  const previous = currentSettings.startOnLogin ?? false;
+  setStartOnLogin(!previous);
+  startLoginToggle.disabled = true;
+
+  try {
+    await saveSettings();
+  } catch (error) {
+    setStartOnLogin(previous);
+    console.error("Failed to update start on login:", error);
+  } finally {
+    startLoginToggle.disabled = false;
+  }
+});
+
 modelSelect.addEventListener("change", async () => {
   await checkModelStatus();
   saveSettings();
@@ -961,6 +1114,14 @@ transcriptModelInput.addEventListener("change", () => {
   saveSettings();
 });
 
+languageAddBtn.addEventListener("click", () => {
+  const code = languageSelect.value;
+  if (!code || currentSettings.transcriptLanguages.includes(code)) return;
+  currentSettings.transcriptLanguages = [...currentSettings.transcriptLanguages, code];
+  renderLanguageSettings();
+  saveSettings();
+});
+
 autoPolishToggle.addEventListener("click", () => {
   setAutoPolish(!currentSettings.autoPolish);
   saveSettings();
@@ -985,6 +1146,11 @@ transformModelInput.addEventListener("change", () => {
 dockSizeSelect.addEventListener("change", () => {
   saveDockPreference({ dockSize: dockSizeSelect.value as DockPreferences["dockSize"] });
 });
+
+dockWidthMinus.addEventListener("click", () => stepDockDimension("width", -1));
+dockWidthPlus.addEventListener("click", () => stepDockDimension("width", 1));
+dockHeightMinus.addEventListener("click", () => stepDockDimension("height", -1));
+dockHeightPlus.addEventListener("click", () => stepDockDimension("height", 1));
 
 dockShapeSelect.addEventListener("change", () => {
   saveDockPreference({ dockShape: dockShapeSelect.value as DockPreferences["dockShape"] });
@@ -1068,20 +1234,35 @@ historyClearBtn.addEventListener("click", async () => {
 
 document.addEventListener("keydown", handleHotkeyCapture, true);
 
-// Listen for recording state changes
-listen<string>("recording-state", (event) => {
-  const state = event.payload;
+function renderRecordingStatus(state: string) {
+  const normalized = String(state).toLowerCase();
+  if (recordingStatusFlashTimer !== undefined && normalized === "ready") return;
+
+  window.clearTimeout(recordingStatusFlashTimer);
+  recordingStatusFlashTimer = undefined;
   statusDot.className = "";
-  if (state === "Recording") {
+  if (normalized === "recording") {
     statusDot.classList.add("recording");
     statusText.textContent = "Recording...";
-  } else if (state === "Transcribing") {
+  } else if (normalized === "transcribing") {
     statusDot.classList.add("transcribing");
     statusText.textContent = "Transcribing...";
+  } else if (normalized === "canceled" || normalized === "cancelled") {
+    statusDot.classList.add("ready");
+    statusText.textContent = "Dictation cancelled";
+    recordingStatusFlashTimer = window.setTimeout(() => {
+      recordingStatusFlashTimer = undefined;
+      renderRecordingStatus("Ready");
+    }, 1400);
   } else {
     statusDot.classList.add("ready");
     statusText.textContent = "Ready";
   }
+}
+
+// Listen for recording state changes
+listen<string>("recording-state", (event) => {
+  renderRecordingStatus(event.payload);
 }).catch((error) => console.error("Failed to listen for recording state", error));
 
 // Listen for download progress
@@ -1102,6 +1283,7 @@ listen<void>("history-updated", () => {
 
 // Initialize
 populateDockControls();
+populateLanguageSelect();
 loadSettings().catch((error) => {
   console.warn("Settings are unavailable in this preview", error);
 });

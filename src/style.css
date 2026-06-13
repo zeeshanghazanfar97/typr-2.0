@@ -533,6 +533,81 @@ textarea::placeholder {
   font-size: 12px;
 }
 
+/* ── Language Control ───────────────────────────────── */
+
+.language-control {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.language-add-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.language-add-row select {
+  max-width: none;
+}
+
+.language-list {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.language-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  max-width: 100%;
+  padding: 3px 5px 3px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: oklch(0.22 0.008 285);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.language-chip span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.language-chip button {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+}
+
+.language-chip button:hover:not(:disabled) {
+  background: var(--surface-active);
+  color: var(--text);
+}
+
+.language-chip button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 /* ── Progress Bar ───────────────────────────────────── */
 
 #download-progress {
@@ -657,6 +732,59 @@ kbd.capturing {
 
 .color-swatch-button[data-dock-color="rose"] .color-swatch {
   background: oklch(0.25 0.028 18);
+}
+
+.dock-dimension-stepper {
+  display: grid;
+  grid-template-columns: 34px minmax(82px, auto) 34px;
+  align-items: center;
+  gap: 8px;
+}
+
+.stepper-btn {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-family: var(--font);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background var(--transition),
+    border-color var(--transition),
+    color var(--transition);
+}
+
+.stepper-btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.stepper-btn:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+
+.dimension-value {
+  min-height: 34px;
+  min-width: 82px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: oklch(0.145 0.006 285);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 /* ── Transform Editor ───────────────────────────────── */
@@ -1046,6 +1174,7 @@ kbd.capturing {
 
   .section-actions,
   .history-entry-pills,
+  .language-list,
   .history-audio-controls {
     justify-content: flex-start;
   }

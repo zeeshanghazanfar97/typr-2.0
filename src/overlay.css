@@ -2,22 +2,27 @@
   /* Dock sizing lives here. Keep Rust window presets in main.rs in sync. */
   --dock-bottom: 6px;
   --dock-gap: 8px;
-  --dock-handle-width: 36px;
+  --dock-width-tune: 0px;
+  --dock-width-tune-half: 0px;
+  --dock-width-tune-menu: 0px;
+  --dock-height-tune: 0px;
+  --dock-height-tune-half: 0px;
+  --dock-handle-width: calc(36px + var(--dock-width-tune-half));
   --dock-handle-height: 6px;
   --dock-handle-hit-x: 24px;
   --dock-handle-hit-y: 10px;
-  --dock-button-height: 52px;
-  --dock-mic-width: 78px;
-  --dock-round-width: 52px;
-  --dock-caret-width: 28px;
-  --dock-menu-width: 300px;
+  --dock-button-height: calc(52px + var(--dock-height-tune));
+  --dock-mic-width: calc(78px + var(--dock-width-tune));
+  --dock-round-width: calc(52px + var(--dock-height-tune) + var(--dock-width-tune-half));
+  --dock-caret-width: calc(28px + var(--dock-width-tune-half));
+  --dock-menu-width: calc(300px + var(--dock-width-tune-menu));
   --dock-tooltip-font: 16px;
   --dock-icon-size: 20px;
   --dock-notes-icon-size: 19px;
   --dock-caret-icon-size: 14px;
-  --recording-pill-height: 60px;
+  --recording-pill-height: calc(60px + var(--dock-height-tune));
   --recording-pill-gap: 13px;
-  --processing-pill-height: 52px;
+  --processing-pill-height: calc(52px + var(--dock-height-tune));
   --processing-pill-font: 15px;
   --dock-pill-radius: 999px;
   --dock-menu-radius: 20px;
@@ -34,6 +39,7 @@
   --dock-rail: oklch(0.33 0.004 285);
   --dock-text: oklch(0.985 0.004 95);
   --dock-muted: oklch(0.78 0.004 95);
+  --dock-outline: oklch(0.985 0.004 95 / 0.72);
   --accent: oklch(0.84 0.118 333);
   --accent-hot: oklch(0.68 0.205 356);
   --error: oklch(0.74 0.152 31);
@@ -46,43 +52,43 @@
 
 body[data-dock-size="compact"] {
   --dock-gap: 6px;
-  --dock-handle-width: 30px;
+  --dock-handle-width: calc(30px + var(--dock-width-tune-half));
   --dock-handle-height: 5px;
   --dock-handle-hit-x: 20px;
   --dock-handle-hit-y: 8px;
-  --dock-button-height: 45px;
-  --dock-mic-width: 68px;
-  --dock-round-width: 45px;
-  --dock-caret-width: 24px;
-  --dock-menu-width: 280px;
+  --dock-button-height: calc(45px + var(--dock-height-tune));
+  --dock-mic-width: calc(68px + var(--dock-width-tune));
+  --dock-round-width: calc(45px + var(--dock-height-tune) + var(--dock-width-tune-half));
+  --dock-caret-width: calc(24px + var(--dock-width-tune-half));
+  --dock-menu-width: calc(280px + var(--dock-width-tune-menu));
   --dock-tooltip-font: 14px;
   --dock-icon-size: 18px;
   --dock-notes-icon-size: 17px;
   --dock-caret-icon-size: 12px;
-  --recording-pill-height: 53px;
+  --recording-pill-height: calc(53px + var(--dock-height-tune));
   --recording-pill-gap: 10px;
-  --processing-pill-height: 45px;
+  --processing-pill-height: calc(45px + var(--dock-height-tune));
   --processing-pill-font: 14px;
 }
 
 body[data-dock-size="large"] {
   --dock-gap: 10px;
-  --dock-handle-width: 42px;
+  --dock-handle-width: calc(42px + var(--dock-width-tune-half));
   --dock-handle-height: 7px;
   --dock-handle-hit-x: 28px;
   --dock-handle-hit-y: 12px;
-  --dock-button-height: 60px;
-  --dock-mic-width: 90px;
-  --dock-round-width: 60px;
-  --dock-caret-width: 32px;
-  --dock-menu-width: 320px;
+  --dock-button-height: calc(60px + var(--dock-height-tune));
+  --dock-mic-width: calc(90px + var(--dock-width-tune));
+  --dock-round-width: calc(60px + var(--dock-height-tune) + var(--dock-width-tune-half));
+  --dock-caret-width: calc(32px + var(--dock-width-tune-half));
+  --dock-menu-width: calc(320px + var(--dock-width-tune-menu));
   --dock-tooltip-font: 17px;
   --dock-icon-size: 22px;
   --dock-notes-icon-size: 21px;
   --dock-caret-icon-size: 16px;
-  --recording-pill-height: 68px;
+  --recording-pill-height: calc(68px + var(--dock-height-tune));
   --recording-pill-gap: 15px;
-  --processing-pill-height: 60px;
+  --processing-pill-height: calc(60px + var(--dock-height-tune));
   --processing-pill-font: 16px;
 }
 
@@ -200,6 +206,7 @@ button {
   width: var(--dock-handle-width);
   height: var(--dock-handle-height);
   border-radius: var(--dock-pill-radius);
+  border: 1px solid var(--dock-outline);
   background: var(--dock);
   opacity: 0.86;
   transition:
@@ -258,6 +265,7 @@ body[data-state="ready"].expanded .control-stack {
 .processing-pill,
 .recording-pill {
   background: var(--dock);
+  border: 1px solid var(--dock-outline);
   color: var(--dock-text);
   box-shadow:
     0 10px 24px var(--shadow),
@@ -391,6 +399,7 @@ body[data-state="ready"].expanded .control-stack {
   min-height: 48px;
   padding: 11px 20px;
   border-radius: var(--dock-pill-radius);
+  border: 1px solid var(--dock-outline);
   background: var(--dock);
   color: var(--dock-text);
   box-shadow: 0 14px 30px var(--shadow);
@@ -619,7 +628,8 @@ body[data-state="recording"] .status-stack,
 body[data-state="transcribing"] .status-stack,
 body[data-state="polishing"] .status-stack,
 body[data-state="inserted"] .status-stack,
-body[data-state="polished"] .status-stack {
+body[data-state="polished"] .status-stack,
+body[data-state="canceled"] .status-stack {
   display: flex;
 }
 
@@ -634,7 +644,8 @@ body[data-state="recording"] .recording-pill,
 body[data-state="transcribing"] .transcribing-pill,
 body[data-state="polishing"] .polishing-pill,
 body[data-state="inserted"] .inserted-pill,
-body[data-state="polished"] .polished-pill {
+body[data-state="polished"] .polished-pill,
+body[data-state="canceled"] .canceled-pill {
   display: flex;
   animation: pill-rise 180ms var(--ease-out);
 }
@@ -749,6 +760,10 @@ body[data-state="polished"] .polished-pill {
   font-size: var(--processing-pill-font);
   font-weight: 600;
   color: oklch(0.965 0.004 95 / 0.94);
+}
+
+.canceled-pill {
+  color: oklch(0.965 0.004 95 / 0.88);
 }
 
 .transcribing-pill {

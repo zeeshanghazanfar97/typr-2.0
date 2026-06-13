@@ -66,6 +66,10 @@ function applyRecordingState(state: string) {
   } else if (normalized === "transcribing" || normalized === "polishing") {
     dictateButton.dataset.state = "transcribing";
     dictateLabel.textContent = "Transcribing…";
+  } else if (normalized === "canceled" || normalized === "cancelled") {
+    dictateButton.dataset.state = "ready";
+    dictateLabel.textContent = "Dictate";
+    flashStatus("Dictation cancelled");
   } else {
     dictateButton.dataset.state = "ready";
     dictateLabel.textContent = "Dictate";

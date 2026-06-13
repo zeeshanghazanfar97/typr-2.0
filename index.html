@@ -91,6 +91,17 @@
                 <select id="mic-select"></select>
               </div>
             </div>
+            <div class="setting-row">
+              <div class="setting-label">
+                <span class="label-text">Start on Login</span>
+                <span class="label-hint">Open Typr automatically after you sign in</span>
+              </div>
+              <div class="setting-control">
+                <button id="start-login-toggle" class="switch-button" type="button" role="switch" aria-checked="false">
+                  <span></span>
+                </button>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -107,6 +118,32 @@
               </div>
               <div class="setting-control">
                 <select id="dock-size-select"></select>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label">
+                <span class="label-text">Width</span>
+                <span class="label-hint">Fine tune the horizontal space of the floating dock</span>
+              </div>
+              <div class="setting-control">
+                <div class="dock-dimension-stepper">
+                  <button id="dock-width-minus" class="stepper-btn" type="button" aria-label="Decrease dock width">-</button>
+                  <span id="dock-width-value" class="dimension-value">Base</span>
+                  <button id="dock-width-plus" class="stepper-btn" type="button" aria-label="Increase dock width">+</button>
+                </div>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label">
+                <span class="label-text">Height</span>
+                <span class="label-hint">Fine tune the thickness of the floating dock</span>
+              </div>
+              <div class="setting-control">
+                <div class="dock-dimension-stepper">
+                  <button id="dock-height-minus" class="stepper-btn" type="button" aria-label="Decrease dock height">-</button>
+                  <span id="dock-height-value" class="dimension-value">Base</span>
+                  <button id="dock-height-plus" class="stepper-btn" type="button" aria-label="Increase dock height">+</button>
+                </div>
               </div>
             </div>
             <div class="setting-row">
@@ -179,6 +216,21 @@
                 <div class="toggle-group">
                   <button id="engine-local" class="toggle-btn active">Local Whisper</button>
                   <button id="engine-cloud" class="toggle-btn">Groq Cloud</button>
+                </div>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label">
+                <span class="label-text">Languages</span>
+                <span class="label-hint">Add one or more spoken languages for transcription</span>
+              </div>
+              <div class="setting-control">
+                <div class="language-control">
+                  <div class="language-add-row">
+                    <select id="language-select" aria-label="Language to add"></select>
+                    <button id="language-add-btn" class="btn-secondary" type="button">Add</button>
+                  </div>
+                  <div id="language-list" class="language-list" aria-label="Selected languages"></div>
                 </div>
               </div>
             </div>
