@@ -5,12 +5,13 @@ const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
-  // Multi-page: include overlay.html
+  // Multi-page: include overlay.html and notes.html
   build: {
     rollupOptions: {
       input: {
         main: "index.html",
         overlay: "src/overlay.html",
+        notes: "src/notes.html",
       },
     },
   },

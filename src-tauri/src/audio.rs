@@ -1,7 +1,10 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use hound::{WavSpec, WavWriter};
-use std::sync::{Arc, Mutex};
 use std::path::PathBuf;
+use std::sync::{mpsc::Sender, Arc, Mutex};
+use std::time::{Duration, Instant};
+
+const AUDIO_LEVEL_INTERVAL: Duration = Duration::from_millis(33);
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct MicDevice {
@@ -44,6 +47,24 @@ pub struct AudioRecorder {
     source_channels: u16,
 }
 
+fn audio_level_for_samples(samples: &[f32]) -> f32 {
+    if samples.is_empty() {
+        return 0.0;
+    }
+
+    let mut sum_squares = 0.0;
+    let mut peak = 0.0_f32;
+
+    for sample in samples {
+        let amplitude = sample.abs().min(1.0);
+        sum_squares += amplitude * amplitude;
+        peak = peak.max(amplitude);
+    }
+
+    let rms = (sum_squares / samples.len() as f32).sqrt();
+    ((rms * 4.8).max(peak * 0.72)).clamp(0.0, 1.0)
+}
+
 impl AudioRecorder {
     pub fn new() -> Self {
         Self {
@@ -54,7 +75,11 @@ impl AudioRecorder {
         }
     }
 
-    pub fn start(&mut self, mic_name: &str) -> Result<(), String> {
+    pub fn start(
+        &mut self,
+        mic_name: &str,
+        level_sender: Option<Sender<f32>>,
+    ) -> Result<(), String> {
         // Clear any leftover samples from previous recording
         self.samples.lock().unwrap().clear();
 
@@ -78,7 +103,10 @@ impl AudioRecorder {
         let sample_rate = default_config.sample_rate().0;
         let channels = default_config.channels();
 
-        println!("[Typr] Mic config: {}Hz, {} channels", sample_rate, channels);
+        println!(
+            "[Typr] Mic config: {}Hz, {} channels",
+            sample_rate, channels
+        );
 
         self.source_sample_rate = sample_rate;
         self.source_channels = channels;
@@ -90,10 +118,18 @@ impl AudioRecorder {
         };
 
         let samples = self.samples.clone();
+        let mut last_level_emit = Instant::now() - AUDIO_LEVEL_INTERVAL;
         let stream = device
             .build_input_stream(
                 &config,
                 move |data: &[f32], _: &cpal::InputCallbackInfo| {
+                    if let Some(sender) = level_sender.as_ref() {
+                        if last_level_emit.elapsed() >= AUDIO_LEVEL_INTERVAL {
+                            let _ = sender.send(audio_level_for_samples(data));
+                            last_level_emit = Instant::now();
+                        }
+                    }
+
                     let mut buf = samples.lock().unwrap();
                     buf.extend_from_slice(data);
                 },
@@ -154,6 +190,32 @@ impl AudioRecorder {
 
         println!("[Typr] WAV saved to {:?}", output_path);
         Ok(output_path.clone())
+    }
+
+    pub fn cancel(&mut self) {
+        self.stream = None;
+        self.samples.lock().unwrap().clear();
+        println!("[Typr] Audio recording canceled");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_audio_level_empty_samples_is_silent() {
+        assert_eq!(audio_level_for_samples(&[]), 0.0);
+    }
+
+    #[test]
+    fn test_audio_level_tracks_louder_samples() {
+        let quiet = audio_level_for_samples(&[0.01, -0.01, 0.02, -0.02]);
+        let loud = audio_level_for_samples(&[0.4, -0.4, 0.6, -0.6]);
+
+        assert!(quiet > 0.0);
+        assert!(loud > quiet);
+        assert!(loud <= 1.0);
     }
 }
 
