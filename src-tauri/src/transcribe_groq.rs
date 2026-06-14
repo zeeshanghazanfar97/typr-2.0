@@ -6,7 +6,6 @@ use crate::settings::TextTransform;
 #[derive(Debug, PartialEq)]
 struct TranscriptionLanguageHint {
     language: Option<String>,
-    prompt: Option<String>,
 }
 
 fn transcription_language_hint(languages: &[String]) -> TranscriptionLanguageHint {
@@ -19,23 +18,15 @@ fn transcription_language_hint(languages: &[String]) -> TranscriptionLanguageHin
     if codes.len() == 1 {
         return TranscriptionLanguageHint {
             language: Some(codes[0].clone()),
-            prompt: None,
         };
     }
 
     if codes.len() > 1 {
-        return TranscriptionLanguageHint {
-            language: None,
-            prompt: Some(format!(
-                "Possible spoken language codes: {}. Transcribe in the spoken language and preserve the original language.",
-                codes.join(", ")
-            )),
-        };
+        return TranscriptionLanguageHint { language: None };
     }
 
     TranscriptionLanguageHint {
         language: Some("en".to_string()),
-        prompt: None,
     }
 }
 
@@ -64,9 +55,6 @@ pub async fn transcribe_groq(
         .part("file", file_part);
     if let Some(language) = language_hint.language {
         form = form.text("language", language);
-    }
-    if let Some(prompt) = language_hint.prompt {
-        form = form.text("prompt", prompt);
     }
 
     let client = reqwest::Client::new();
@@ -176,7 +164,6 @@ mod tests {
             transcription_language_hint(&["ur".to_string()]),
             TranscriptionLanguageHint {
                 language: Some("ur".to_string()),
-                prompt: None,
             }
         );
     }
@@ -185,7 +172,6 @@ mod tests {
     fn test_transcription_language_hint_multiple_languages() {
         let hint = transcription_language_hint(&["en".to_string(), "ur".to_string()]);
         assert_eq!(hint.language, None);
-        assert!(hint.prompt.unwrap().contains("en, ur"));
     }
 
     #[tokio::test]

@@ -45,9 +45,17 @@ pub fn list_microphones() -> Vec<MicDevice> {
 /// Wrapper to make cpal::Stream usable across threads.
 /// SAFETY: cpal::Stream on macOS (CoreAudio) is thread-safe in practice;
 /// we only access it behind a Mutex to start/stop recording.
-struct SendStream(#[allow(dead_code)] cpal::Stream);
+struct SendStream(cpal::Stream);
 unsafe impl Send for SendStream {}
 unsafe impl Sync for SendStream {}
+
+impl Drop for SendStream {
+    fn drop(&mut self) {
+        if let Err(error) = self.0.pause() {
+            eprintln!("[Typr] Failed to pause audio stream: {}", error);
+        }
+    }
+}
 
 pub struct AudioRecorder {
     samples: Arc<Mutex<Vec<f32>>>,
@@ -269,7 +277,7 @@ impl AudioRecorder {
     }
 
     pub fn stop_and_save(&mut self, output_path: &PathBuf) -> Result<RecordingSaveResult, String> {
-        self.stream = None; // Drop stops the stream
+        drop(self.stream.take()); // Drop pauses and stops the stream.
         println!("[Typr] Audio recording stopped");
 
         let samples = self.samples.lock().unwrap();
@@ -326,7 +334,7 @@ impl AudioRecorder {
     }
 
     pub fn cancel(&mut self) {
-        self.stream = None;
+        drop(self.stream.take());
         self.samples.lock().unwrap().clear();
         println!("[Typr] Audio recording canceled");
     }

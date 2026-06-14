@@ -53,29 +53,12 @@ fn transcription_language_code(languages: &[String]) -> String {
     }
 }
 
-fn transcription_language_prompt(languages: &[String]) -> Option<String> {
-    let codes = languages
-        .iter()
-        .map(|language| language.trim().to_lowercase())
-        .filter(|language| !language.is_empty())
-        .collect::<Vec<_>>();
-
-    if codes.len() > 1 {
-        Some(format!(
-            "Possible spoken language codes: {}. Transcribe in the spoken language and preserve the original language.",
-            codes.join(", ")
-        ))
-    } else {
-        None
-    }
-}
-
 fn transcription_args(
     model_path: &PathBuf,
     audio_path: &PathBuf,
     languages: &[String],
 ) -> Vec<String> {
-    let mut args = vec![
+    vec![
         "-m".to_string(),
         model_path.to_string_lossy().to_string(),
         "-f".to_string(),
@@ -83,14 +66,7 @@ fn transcription_args(
         "--no-timestamps".to_string(),
         "-l".to_string(),
         transcription_language_code(languages),
-    ];
-
-    if let Some(prompt) = transcription_language_prompt(languages) {
-        args.push("--prompt".to_string());
-        args.push(prompt);
-    }
-
-    args
+    ]
 }
 
 pub fn model_filename(model_size: &str) -> String {
@@ -128,7 +104,7 @@ mod tests {
     }
 
     #[test]
-    fn test_transcription_args_use_auto_and_prompt_for_multiple_languages() {
+    fn test_transcription_args_use_auto_without_prompt_for_multiple_languages() {
         let args = transcription_args(
             &PathBuf::from("/models/ggml-small.bin"),
             &PathBuf::from("/audio.wav"),
@@ -136,6 +112,6 @@ mod tests {
         );
 
         assert!(args.windows(2).any(|pair| pair == ["-l", "auto"]));
-        assert!(args.iter().any(|arg| arg.contains("en, ur")));
+        assert!(!args.iter().any(|arg| arg == "--prompt"));
     }
 }
