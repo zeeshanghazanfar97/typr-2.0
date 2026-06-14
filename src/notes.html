@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="./notes.css" />
+  </head>
+  <body>
+    <main class="note-card">
+      <header class="note-header" data-tauri-drag-region>
+        <div class="note-title" data-tauri-drag-region>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4.5 6.5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v7.6l-5.5 5.4H6.5a2 2 0 0 1-2-2v-11Z" />
+            <path d="M14 19.5V16a2 2 0 0 1 2-2h3.5M8.5 9h7M8.5 12.5H12" />
+          </svg>
+          <span data-tauri-drag-region>Notes</span>
+        </div>
+        <button id="close-notes" class="note-close" type="button" aria-label="Close notes">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6 18 18M18 6 6 18" />
+          </svg>
+        </button>
+      </header>
+
+      <textarea
+        id="note-input"
+        class="note-input"
+        placeholder="Type or dictate anything…"
+        spellcheck="true"
+        autofocus
+      ></textarea>
+
+      <footer class="note-footer">
+        <button id="dictate-note" class="note-dictate" type="button" data-state="ready">
+          <span class="note-dictate-dot" aria-hidden="true"></span>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="9" y="2.5" width="6" height="11.5" rx="3" />
+            <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5" />
+          </svg>
+          <span id="dictate-note-label">Dictate</span>
+        </button>
+        <span id="note-status" class="note-status" role="status"></span>
+      </footer>
+    </main>
+    <script type="module" src="./notes.ts"></script>
+  </body>
+</html>

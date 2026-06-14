@@ -1,0 +1,232 @@
+:root {
+  --ink: oklch(0.22 0.004 95);
+  --ink-soft: oklch(0.58 0.015 86);
+  --paper: oklch(0.985 0.006 92);
+  --paper-hover: oklch(0.955 0.009 92);
+  --paper-line: oklch(0.905 0.012 88);
+  --dock: oklch(0.205 0.004 285);
+  --dock-hover: oklch(0.285 0.004 285);
+  --dock-text: oklch(0.985 0.004 95);
+  --accent: oklch(0.84 0.118 333);
+  --accent-hot: oklch(0.68 0.205 356);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --font: "DM Sans", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+  font-family: var(--font);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+button {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+}
+
+.note-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  border-radius: 18px;
+  border: 1px solid var(--paper-line);
+  background: var(--paper);
+  overflow: hidden;
+}
+
+.note-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 14px 10px 18px;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+}
+
+.note-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.note-title svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.note-close {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition:
+    background 140ms var(--ease-out),
+    color 140ms var(--ease-out);
+}
+
+.note-close:hover {
+  background: var(--paper-hover);
+  color: var(--ink);
+}
+
+.note-close svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.note-input {
+  flex: 1 1 auto;
+  margin: 0 6px;
+  padding: 6px 12px 12px;
+  border: 0;
+  resize: none;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.6;
+  outline: none;
+}
+
+.note-input::placeholder {
+  color: oklch(0.7 0.012 88);
+}
+
+.note-footer {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px 14px;
+  border-top: 1px solid var(--paper-line);
+}
+
+.note-dictate {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 16px 0 13px;
+  border-radius: 999px;
+  background: var(--dock);
+  color: var(--dock-text);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 160ms var(--ease-out),
+    transform 160ms var(--ease-out);
+}
+
+.note-dictate:hover {
+  background: var(--dock-hover);
+}
+
+.note-dictate:active {
+  transform: scale(0.96);
+}
+
+.note-dictate svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.note-dictate-dot {
+  display: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent-hot);
+  box-shadow: 0 0 10px oklch(0.68 0.205 356 / 0.8);
+  animation: note-pulse 1400ms ease-in-out infinite;
+}
+
+.note-dictate[data-state="recording"] {
+  background: oklch(0.3 0.07 356);
+}
+
+.note-dictate[data-state="recording"] .note-dictate-dot {
+  display: block;
+}
+
+.note-dictate[data-state="recording"] svg {
+  display: none;
+}
+
+.note-dictate[data-state="transcribing"] {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.note-status {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  opacity: 0;
+  transition: opacity 220ms var(--ease-out);
+}
+
+.note-status.visible {
+  opacity: 1;
+}
+
+@keyframes note-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}

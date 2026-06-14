@@ -35,11 +35,32 @@
             </svg>
             General
           </a>
+          <a class="nav-item" data-section="dock">
+            <svg class="nav-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <rect x="2.5" y="5" width="11" height="6" rx="3" stroke="currentColor" stroke-width="1.2"/>
+              <path d="M5.5 8h5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+            </svg>
+            Dock
+          </a>
           <a class="nav-item" data-section="engine">
             <svg class="nav-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M2.5 8h3l1.5-3 2 6 1.5-3h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
             Engine
+          </a>
+          <a class="nav-item" data-section="transforms">
+            <svg class="nav-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="m10.5 2.5 3 3-6.8 6.8H3.7V9.3l6.8-6.8Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M3.5 3.5 4.2 5 5.7 5.7 4.2 6.4 3.5 8 2.8 6.4 1.3 5.7 2.8 5 3.5 3.5Z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/>
+            </svg>
+            Transforms
+          </a>
+          <a class="nav-item" data-section="history">
+            <svg class="nav-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M4 3.5h7.5A1.5 1.5 0 0 1 13 5v7.5H4A1.5 1.5 0 0 1 2.5 11V5A1.5 1.5 0 0 1 4 3.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M5 6.5h5.5M5 9h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+            </svg>
+            History
           </a>
           <a class="nav-item" data-section="recording">
             <svg class="nav-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -70,6 +91,113 @@
                 <select id="mic-select"></select>
               </div>
             </div>
+            <div class="setting-row">
+              <div class="setting-label">
+                <span class="label-text">Start on Login</span>
+                <span class="label-hint">Open Typr automatically after you sign in</span>
+              </div>
+              <div class="setting-control">
+                <button id="start-login-toggle" class="switch-button" type="button" role="switch" aria-checked="false">
+                  <span></span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="section-dock" class="content-section">
+          <div class="section-header">
+            <h2 class="section-title">Dock</h2>
+            <p class="section-desc">Tune the floating control</p>
+          </div>
+          <div class="settings-list">
+            <div class="setting-row">
+              <div class="setting-label">
+                <span class="label-text">Size</span>
+                <span class="label-hint">Scales the collapsed handle and expanded controls</span>
+              </div>
+              <div class="setting-control">
+                <select id="dock-size-select"></select>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label">
+                <span class="label-text">Width</span>
+                <span class="label-hint">Fine tune the horizontal space of the floating dock</span>
+              </div>
+              <div class="setting-control">
+                <div class="dock-dimension-stepper">
+                  <button id="dock-width-minus" class="stepper-btn" type="button" aria-label="Decrease dock width">-</button>
+                  <span id="dock-width-value" class="dimension-value">Base</span>
+                  <button id="dock-width-plus" class="stepper-btn" type="button" aria-label="Increase dock width">+</button>
+                </div>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label">
+                <span class="label-text">Height</span>
+                <span class="label-hint">Fine tune the thickness of the floating dock</span>
+              </div>
+              <div class="setting-control">
+                <div class="dock-dimension-stepper">
+                  <button id="dock-height-minus" class="stepper-btn" type="button" aria-label="Decrease dock height">-</button>
+                  <span id="dock-height-value" class="dimension-value">Base</span>
+                  <button id="dock-height-plus" class="stepper-btn" type="button" aria-label="Increase dock height">+</button>
+                </div>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label">
+                <span class="label-text">Shape</span>
+                <span class="label-hint">Changes the corner radius of the dock controls</span>
+              </div>
+              <div class="setting-control">
+                <select id="dock-shape-select"></select>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label">
+                <span class="label-text">Color</span>
+                <span class="label-hint">Applies to the floating pill and status states</span>
+              </div>
+              <div class="setting-control">
+                <div id="dock-color-options" class="color-swatch-row" role="radiogroup" aria-label="Dock color">
+                  <button class="color-swatch-button active" type="button" role="radio" data-dock-color="charcoal" aria-label="Charcoal" aria-checked="true">
+                    <span class="color-swatch"></span>
+                  </button>
+                  <button class="color-swatch-button" type="button" role="radio" data-dock-color="graphite" aria-label="Graphite" aria-checked="false">
+                    <span class="color-swatch"></span>
+                  </button>
+                  <button class="color-swatch-button" type="button" role="radio" data-dock-color="plum" aria-label="Plum" aria-checked="false">
+                    <span class="color-swatch"></span>
+                  </button>
+                  <button class="color-swatch-button" type="button" role="radio" data-dock-color="moss" aria-label="Moss" aria-checked="false">
+                    <span class="color-swatch"></span>
+                  </button>
+                  <button class="color-swatch-button" type="button" role="radio" data-dock-color="rose" aria-label="Rose" aria-checked="false">
+                    <span class="color-swatch"></span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label">
+                <span class="label-text">Position</span>
+                <span class="label-hint">Keeps the dock near your preferred screen edge</span>
+              </div>
+              <div class="setting-control">
+                <select id="dock-position-select"></select>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label">
+                <span class="label-text">Edge Offset</span>
+                <span class="label-hint">Negative moves toward the screen edge, positive moves inward</span>
+              </div>
+              <div class="setting-control">
+                <select id="dock-inset-select"></select>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -88,6 +216,21 @@
                 <div class="toggle-group">
                   <button id="engine-local" class="toggle-btn active">Local Whisper</button>
                   <button id="engine-cloud" class="toggle-btn">Groq Cloud</button>
+                </div>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label">
+                <span class="label-text">Languages</span>
+                <span class="label-hint">Add one or more spoken languages for transcription</span>
+              </div>
+              <div class="setting-control">
+                <div class="language-control">
+                  <div class="language-add-row">
+                    <select id="language-select" aria-label="Language to add"></select>
+                    <button id="language-add-btn" class="btn-secondary" type="button">Add</button>
+                  </div>
+                  <div id="language-list" class="language-list" aria-label="Selected languages"></div>
                 </div>
               </div>
             </div>
@@ -118,6 +261,111 @@
                 <input type="password" id="groq-key" placeholder="gsk_..." />
               </div>
             </div>
+            <div class="setting-row hidden" id="cloud-transcript-model-settings">
+              <div class="setting-label">
+                <span class="label-text">Transcript Model</span>
+                <span class="label-hint">Groq model used for cloud transcription</span>
+              </div>
+              <div class="setting-control">
+                <div class="model-config">
+                  <div class="toggle-group model-mode-group" role="group" aria-label="Transcript model mode">
+                    <button id="transcript-model-default" class="toggle-btn active" type="button">Keep Default</button>
+                    <button id="transcript-model-custom" class="toggle-btn" type="button">Custom Model ID</button>
+                  </div>
+                  <input
+                    id="transcript-model-id"
+                    class="custom-model-input hidden"
+                    type="text"
+                    placeholder="whisper-large-v3-turbo"
+                    spellcheck="false"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="section-transforms" class="content-section">
+          <div class="section-header with-action">
+            <div>
+              <h2 class="section-title">Transforms</h2>
+              <p class="section-desc">Configure reusable LLM transforms</p>
+            </div>
+            <button id="add-transform-btn" class="btn-primary" type="button">Add Transform</button>
+          </div>
+          <div class="settings-list">
+            <div class="setting-row">
+              <div class="setting-label">
+                <span class="label-text">Auto Apply After Dictation</span>
+                <span class="label-hint">Uses Groq after local or cloud transcription</span>
+              </div>
+              <div class="setting-control">
+                <button id="auto-polish-toggle" class="switch-button active" type="button" role="switch" aria-checked="true">
+                  <span></span>
+                </button>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label">
+                <span class="label-text">Default Transform</span>
+                <span class="label-hint">Used when Auto Apply is on</span>
+              </div>
+              <div class="setting-control">
+                <select id="default-transform-select"></select>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-label">
+                <span class="label-text">Transform Model</span>
+                <span class="label-hint">Groq chat model used for LLM transforms</span>
+              </div>
+              <div class="setting-control">
+                <div class="model-config">
+                  <div class="toggle-group model-mode-group" role="group" aria-label="Transform model mode">
+                    <button id="transform-model-default" class="toggle-btn active" type="button">Keep Default</button>
+                    <button id="transform-model-custom" class="toggle-btn" type="button">Custom Model ID</button>
+                  </div>
+                  <input
+                    id="transform-model-id"
+                    class="custom-model-input hidden"
+                    type="text"
+                    placeholder="openai/gpt-oss-120b"
+                    spellcheck="false"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="transform-panel">
+            <div class="transform-panel-head">
+              <span class="label-text">Configured Transforms</span>
+              <span id="transform-count" class="label-hint">0 configured</span>
+            </div>
+            <div id="transform-list" class="transform-list"></div>
+          </div>
+        </section>
+
+        <section id="section-history" class="content-section">
+          <div class="section-header with-action">
+            <div>
+              <h2 class="section-title">History</h2>
+              <p class="section-desc">Review saved transcript and transform data</p>
+            </div>
+            <div class="section-actions">
+              <button id="history-refresh-btn" class="btn-secondary" type="button">Refresh</button>
+              <button id="history-clear-btn" class="btn-secondary" type="button">Clear</button>
+            </div>
+          </div>
+          <div class="history-panel">
+            <div class="history-panel-head">
+              <span class="label-text">Saved Entries</span>
+              <span id="history-summary" class="label-hint">0 entries</span>
+            </div>
+            <div id="history-empty" class="history-empty">
+              <span class="label-text">No transcript history yet</span>
+              <span class="label-hint">Recorded transcript data will appear here after dictation finishes.</span>
+            </div>
+            <div id="history-list" class="history-list"></div>
           </div>
         </section>
 
@@ -142,10 +390,14 @@
             <div class="setting-row">
               <div class="setting-label">
                 <span class="label-text">Hotkey</span>
-                <span class="label-hint">Global keyboard shortcut to trigger recording</span>
+                <span id="hotkey-hint" class="label-hint">Global keyboard shortcut to trigger recording</span>
               </div>
               <div class="setting-control">
-                <kbd id="hotkey-text">Cmd+Shift+D</kbd>
+                <div class="hotkey-control">
+                  <kbd id="hotkey-text">Ctrl+Option+Space</kbd>
+                  <button id="hotkey-change-btn" class="btn-secondary" type="button">Change</button>
+                  <button id="hotkey-clear-btn" class="btn-secondary" type="button">Clear</button>
+                </div>
               </div>
             </div>
           </div>
